@@ -21,9 +21,9 @@ logger = logging.getLogger(__name__)
 
 
 class ProductFilter(django_filters.FilterSet):
-    group = django_filters.MethodFilter()
-    group_id = django_filters.MethodFilter()
-    band = django_filters.MethodFilter()
+    group = django_filters.CharFilter(method='filter_group')
+    group_id = django_filters.CharFilter(method='filter_group_id')
+    band = django_filters.CharFilter(method='filter_band')
 
     class Meta:
         model = Product
@@ -58,7 +58,7 @@ class ProductViewSet(viewsets.ModelViewSet):
 
 
 class CatalogFilter(django_filters.FilterSet):
-    group = django_filters.MethodFilter()
+    group = django_filters.CharFilter(method='filter_group')
 
     class Meta:
         model = Product
@@ -445,7 +445,7 @@ class PermissionUserViewSet(viewsets.ModelViewSet):
 
 
 class PermissionWorkgroupUserFilter(django_filters.FilterSet):
-    product = django_filters.MethodFilter()
+    product = django_filters.CharFilter(method='filter_product')
 
     class Meta:
         model = WorkgroupUser

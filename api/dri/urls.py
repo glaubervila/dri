@@ -89,7 +89,7 @@ router.register(r'visiomatic/coadd_objects', catalog_views.VisiomaticCoaddObject
 
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
-    url(r'^admin', admin.site.urls),
+    # url(r'^admin', admin.site.urls),
     url(r'^', include(router.urls)),
     url(r'^contact/', common_views.contact_us),
    

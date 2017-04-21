@@ -21,7 +21,7 @@ class FeatureViewSet(viewsets.ModelViewSet):
     ordering_fields = '__all__'
 
 class FlaggedFilter(django_filters.FilterSet):
-    release = django_filters.MethodFilter()
+    release = django_filters.CharFilter(method='filter_release')
 
     class Meta:
         model = Flagged

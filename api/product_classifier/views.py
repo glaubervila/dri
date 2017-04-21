@@ -50,8 +50,8 @@ class ProductGroupViewSet(viewsets.ModelViewSet):
         return Response(result)
 
 class ProductClassContentFilter(django_filters.FilterSet):
-    pcc_class = django_filters.MethodFilter()
-    search = django_filters.MethodFilter()
+    pcc_class = django_filters.CharFilter(method='filter_pcc_class')
+    search = django_filters.CharFilter(method='filter_search')
 
     class Meta:
         model = ProductClassContent

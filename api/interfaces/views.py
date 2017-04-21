@@ -21,7 +21,7 @@ class ApplicationViewSet(viewsets.ModelViewSet):
 
 
 class TutorialFilter(django_filters.FilterSet):
-    app_name = django_filters.MethodFilter()
+    app_name = django_filters.CharFilter(method='filter_app_name')
 
     class Meta:
         model = Tutorial

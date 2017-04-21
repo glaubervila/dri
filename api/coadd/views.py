@@ -59,9 +59,9 @@ class TileViewSet(viewsets.ModelViewSet):
 
 
 class DatasetFilter(django_filters.FilterSet):
-    tag__in = django_filters.MethodFilter()
+    tag__in = django_filters.CharFilter(method='filter_tag__in')
     tli_tilename = django_filters.CharFilter(name='tile__tli_tilename', label='Tilename')
-    position = django_filters.MethodFilter()
+    position = django_filters.CharFilter(method='filter_position')
 
     class Meta:
         model = Dataset
