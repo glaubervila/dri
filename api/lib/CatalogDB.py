@@ -41,22 +41,11 @@ class DBBase:
 
     def __init__(self, db_settings):
         self.database = self.set_database(db_settings)
-        print(self.database.get_string_connection())
-        print("!!!!!")
         self.engine = create_engine(self.database.get_string_connection())
         self.inspect = inspect(self.engine)
 
         with self.engine.connect():
             self.metadata = MetaData(self.engine)
-
-        print(self.table_exists('catalog_rating'))
-        print(self.table_exists('catalog_rating22'))
-        print('******')
-        print(self.select_all('catalog_rating'))
-        print(self.get_count('catalog_rating'))
-        print(self.get_table_columns('catalog_rating'))
-        print(self.inspect.get_table_names())
-        print(self.inspect.get_schema_names())
 
     def set_database(self, db_settings):
         if db_settings['ENGINE'] not in self.available_engines:
@@ -87,6 +76,12 @@ class DBBase:
 
     def table_exists(self, table, schema=None):
         return self.engine.has_table(table, schema)
+
+    def get_table_obj(self, table, schema=None):
+        return Table(table, self.metadata, autoload=True, schema=schema)
+
+    def get_column_obj(self, table_obj, column_name):
+        return getattr(table_obj.c, column_name)
 
     def select_all(self, table, schema=None):
         with self.engine.connect() as con:

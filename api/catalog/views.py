@@ -1,4 +1,3 @@
-from lib.CatalogDB import CatalogDB
 from product.models import Catalog, ProductContent, ProductContentAssociation
 from product.serializers import AssociationSerializer
 
@@ -11,6 +10,8 @@ from .models import Reject
 from .serializers import RatingSerializer, RejectSerializer
 from rest_framework.permissions import AllowAny
 import csv
+
+from .views_db import CoaddObjectsDBHelper
 
 
 class RatingViewSet(viewsets.ModelViewSet):
@@ -242,7 +243,6 @@ class VisiomaticCoaddObjects(ViewSet):
             com = CatalogDB()
 
         db = com.wrapper
-
         # tablename
         # Verifica se a tabela existe
         if not db.table_exists(catalog.tbl_schema, catalog.tbl_name):
@@ -352,9 +352,15 @@ class CoaddObjects(ViewSet):
         """
         Return a list of coadd objects.
         """
+
+        print("#####")
+        print(request.query_params)
+        print(request.query_params['limit'])
+        print("##### 1 ")
         # Recuperar o parametro product id ou sorce e obrigatorio
         product_id = request.query_params.get('product', None)
         source = request.query_params.get('source', None)
+
         if product_id is not None:
             # Recuperar no model Catalog pelo id passado na url
             catalog = Catalog.objects.select_related().get(product_ptr_id=product_id)
@@ -366,44 +372,9 @@ class CoaddObjects(ViewSet):
         if not catalog:
             raise Exception('No product found.')
 
-        if catalog.tbl_database is not None:
-            com = CatalogDB(db=catalog.tbl_database)
-        else:
-            com = CatalogDB()
-
-        db = com.wrapper
-
-        # tablename
-        # Verifica se a tabela existe
-        if not db.table_exists(catalog.tbl_schema, catalog.tbl_name):
-            raise Exception("Table or view  %.%s does not exist" % (catalog.tbl_schema, catalog.tbl_name))
-
-        # Parametros de Paginacao
-        limit = request.query_params.get('limit', 1000)
-        start = request.query_params.get('offset', None)
-
-        # Parametros de Ordenacao
-        ordering = request.query_params.get('ordering', None)
-
-        # Parametro Columns
-        pcolumns = request.query_params.get('columns', None)
-        columns = None
-        if pcolumns is not None:
-            acolumns = pcolumns.split(',')
-            if len(acolumns) > 0:
-                columns = acolumns
-
-
-        coordinate = request.query_params.get('coordinate', None)
-        if coordinate is not None:
-            coordinate = coordinate.split(',')
-        bounding = request.query_params.get('bounding', None)
-        if bounding is not None:
-            bounding = bounding.split(',')
-        maglim = request.query_params.get('maglim', None)
-
-        coadd_object_id = request.query_params.get('coadd_object_id', None)
-
+        db_helper = CoaddObjectsDBHelper(catalog.tbl_name,
+                                         schema=catalog.tbl_schema,
+                                         database=catalog.tbl_database)
 
         # Antes de criar os filtros para a query verificar se o catalogo tem associacao e descobrir as
         queryset = ProductContentAssociation.objects.select_related().filter(pca_product=catalog.pk)
@@ -415,83 +386,15 @@ class CoaddObjects(ViewSet):
             if property.get('pcc_ucd'):
                 properties.update({property.get('pcc_ucd'): property.get('pcn_column_name')})
 
-        property_id = properties.get("meta.id;meta.main", None)
-        property_ra = properties.get("pos.eq.ra;meta.main", None)
-        property_dec = properties.get("pos.eq.dec;meta.main", None)
+        rows = db_helper.create_stm(request.query_params, properties)
 
-        filters = list()
-        if coordinate and bounding:
-            ra = float(coordinate[0])
-            dec = float(coordinate[1])
-            bra = float(bounding[0])
-            bdec = float(bounding[1])
-            filters.append(
-                dict({
-                    "operator": "AND",
-                    "conditions": list([
-                        dict({
-                            "property": property_ra,
-                            "operator": "between",
-                            "value": list([ra - bra, ra + bra])
-                        }),
-                        dict({
-                            "property": property_dec,
-                            "operator": "between",
-                            "value": list([dec - bdec, dec + bdec])
-                        })
-                    ])
-                })
-            )
-
-        if maglim is not None:
-            # TODO a magnitude continua com a propriedade hardcoded
-            maglim = float(maglim)
-            mag = 'MAG_AUTO_I'
-            filters.append(
-                dict({
-                    "property": mag,
-                    "operator": "<=",
-                    "value": maglim
-                })
-            )
-
-        if coadd_object_id is not None:
-            filters.append(
-                dict({
-                    "property": property_id,
-                    "operator": '=',
-                    "value": int(coadd_object_id)
-                })
-            )
-
-        if len(filters) == 0:
-            filters = None
-
-        # retornar uma lista com os objetos da tabela
-        rows = list()
-
-        owner = request.user.pk
-
-        rows, count = db.query(
-            schema=catalog.tbl_schema,
-            table=catalog.tbl_name,
-            columns=columns,
-            filters=filters,
-            limit=limit,
-            offset=start,
-            order_by=ordering
-        )
-
+        all_dd = list()
         for row in rows:
-            row.update({
-                "_meta_id": row.get(properties.get("meta.id;meta.main"))
-            })
-            row.update({
-                "_meta_ra": row.get(properties.get("pos.eq.ra;meta.main"))
-            })
-            row.update({
-                "_meta_dec": row.get(properties.get("pos.eq.dec;meta.main"))
-            })
+            print(row)
+            dd = dict()
+            dd["_meta_id"] = row[0]
+            dd["_meta_ra"] = row[1]
+            dd["_meta_dec"] = row[2]
+            all_dd.append(dd)
 
-
-        return Response(rows)
+        return Response(all_dd)
