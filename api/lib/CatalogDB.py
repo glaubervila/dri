@@ -83,6 +83,14 @@ class DBBase:
     def get_column_obj(self, table_obj, column_name):
         return getattr(table_obj.c, column_name)
 
+    def fetchall_dict(self, stm, columns):
+        with self.engine.connect() as con:
+            result = con.execute(stm)
+            return [
+                dict(zip(columns, row))
+                for row in result.fetchall()
+                ]
+
     def select_all(self, table, schema=None):
         with self.engine.connect() as con:
             table = Table(table, self.metadata,

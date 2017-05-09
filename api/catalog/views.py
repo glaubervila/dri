@@ -11,7 +11,7 @@ from .serializers import RatingSerializer, RejectSerializer
 from rest_framework.permissions import AllowAny
 import csv
 
-from .views_db import CoaddObjectsDBHelper
+from .views_db import CoaddObjectsDBHelper, VisiomaticCoaddObjectsDBHelper
 
 
 class RatingViewSet(viewsets.ModelViewSet):
@@ -237,16 +237,10 @@ class VisiomaticCoaddObjects(ViewSet):
         if not catalog:
             raise Exception('No product found.')
 
-        if catalog.tbl_database is not None:
-            com = CatalogDB(db=catalog.tbl_database)
-        else:
-            com = CatalogDB()
-
-        db = com.wrapper
-        # tablename
-        # Verifica se a tabela existe
-        if not db.table_exists(catalog.tbl_schema, catalog.tbl_name):
-            raise Exception("Table or view  %s.%s does not exist" % (catalog.tbl_schema, catalog.tbl_name))
+        db_helper = VisiomaticCoaddObjectsDBHelper(
+                                         catalog.tbl_name,
+                                         schema=catalog.tbl_schema,
+                                         database=catalog.tbl_database)
 
         # Parametros de Paginacao
         limit = request.query_params.get('limit', 1000)
@@ -343,6 +337,7 @@ class VisiomaticCoaddObjects(ViewSet):
         else:
             pass
 
+
 class CoaddObjects(ViewSet):
     """
 
@@ -353,10 +348,6 @@ class CoaddObjects(ViewSet):
         Return a list of coadd objects.
         """
 
-        print("#####")
-        print(request.query_params)
-        print(request.query_params['limit'])
-        print("##### 1 ")
         # Recuperar o parametro product id ou sorce e obrigatorio
         product_id = request.query_params.get('product', None)
         source = request.query_params.get('source', None)
@@ -381,20 +372,22 @@ class CoaddObjects(ViewSet):
         serializer = AssociationSerializer(queryset, many=True)
         associations = serializer.data
         properties = dict()
+
         # propriedades corretas
         for property in associations:
             if property.get('pcc_ucd'):
                 properties.update({property.get('pcc_ucd'): property.get('pcn_column_name')})
 
-        rows = db_helper.create_stm(request.query_params, properties)
-
-        all_dd = list()
+        rows = db_helper.query_result(request.query_params, properties)
         for row in rows:
-            print(row)
-            dd = dict()
-            dd["_meta_id"] = row[0]
-            dd["_meta_ra"] = row[1]
-            dd["_meta_dec"] = row[2]
-            all_dd.append(dd)
+            row.update({
+                "_meta_id": row.get(properties.get("meta.id;meta.main").lower())
+            })
+            row.update({
+                "_meta_ra": row.get(properties.get("pos.eq.ra;meta.main").lower())
+            })
+            row.update({
+                "_meta_dec": row.get(properties.get("pos.eq.dec;meta.main").lower())
+            })
 
-        return Response(all_dd)
+        return Response(rows)
