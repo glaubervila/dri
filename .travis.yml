@@ -39,7 +39,9 @@ before_install:
   - git status
   - git add teste.txt
   - git commit -m 'test add file'
-  - git push origin develop
+  - git remote -v
+  - git set-url origin https://github.com/$TRAVIS_REPO_SLUG.git
+  - git push
   # - cd ../../
   # - git add frontend/build/ -A
   # - git commit --message 'Teste'
